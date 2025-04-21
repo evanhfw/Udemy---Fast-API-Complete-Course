@@ -64,4 +64,3 @@ async def update_todo(
     todo_model.complete = todo_request.complete  # type: ignore
     db.add(todo_model)
     db.commit()
-    return
