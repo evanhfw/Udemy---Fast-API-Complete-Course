@@ -2,3 +2,4 @@ course_resource/
 .venv/
 __pycache__
 .vscode/
+todos.db
