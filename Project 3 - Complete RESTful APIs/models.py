@@ -1,6 +1,6 @@
 """Database models for the Todo application."""
 
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from database import Base
 
 
@@ -13,6 +13,7 @@ class Users(Base):  # pylint: disable=too-few-public-methods
     email = Column(String, unique=True)
     username = Column(String, unique=True)
     first_name = Column(String)
+    last_name = Column(String)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
     role = Column(String)
@@ -28,3 +29,4 @@ class Todos(Base):  # pylint: disable=too-few-public-methods
     description = Column(String)
     priority = Column(Integer)
     complete = Column(Boolean, default=False)
+    owner_id = Column(Integer, ForeignKey("users.id"))
