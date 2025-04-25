@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 
@@ -46,12 +46,12 @@ def authenticate_user(username: str, password: str, db: Session = Depends(get_db
 class CreateUserRequest(BaseModel):
     """Data model for user creation requests."""
 
-    username: str
-    email: str
-    first_name: str
-    last_name: str
-    password: str
-    role: str
+    username: str = Field(..., min_length=3, max_length=15)
+    email: str = Field(...)
+    first_name: str = Field(..., min_length=1, max_length=50)
+    last_name: str = Field(..., min_length=1, max_length=50)
+    password: str = Field(..., min_length=5, max_length=24)
+    role: str = Field(default="user")
 
 
 class Token(BaseModel):
@@ -61,13 +61,13 @@ class Token(BaseModel):
     token_type: str
 
 
-def create_access_token(username, user_id, expires_delta: timedelta):
+def create_access_token(username, user_id, user_role, expires_delta: timedelta):
     """Create a new JWT access token."""
     # Convert to native types if needed
     username_str = str(username) if username is not None else None
     user_id_int = int(user_id) if user_id is not None else None
 
-    encode = {"sub": username_str, "id": user_id_int}
+    encode = {"sub": username_str, "id": user_id_int, "role": user_role}
     expires = datetime.now(timezone.utc) + expires_delta
     encode.update({"exp": expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -79,11 +79,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
         user_id = payload.get("id")
+        user_role = payload.get("role")
         if username is None or user_id is None:
             raise HTTPException(
                 status_code=401, detail="Could not validate credentials"
             )
-        return {"username": username, "id": user_id}
+        return {"username": username, "id": user_id, "role": user_role}
     except JWTError as exc:
         raise HTTPException(
             status_code=401, detail="Could not validate credentials"
@@ -117,5 +118,7 @@ async def login_for_access_token(
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    token = create_access_token(user.username, user.id, timedelta(minutes=20))
+    token = create_access_token(
+        user.username, user.id, user.role, timedelta(minutes=20)
+    )
     return {"access_token": token, "token_type": "bearer"}
